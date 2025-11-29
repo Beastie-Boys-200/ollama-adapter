@@ -60,7 +60,11 @@ def docs_pipeline(query: str, collection_name: str, docs_path: list[Path] | None
     return ollama_views.stream_rag_answer(
         query=RagAnswer(
             query=query,
-            context=[vocab['text'] for vocab in similar]
+            context=[vocab['text'] for vocab in similar],
+            other_dict = [{
+                'role': 'system',
+                'content': 'If provided information does not support with user question, simply answer that you can not answer to this query with provided context'
+            }]
         ),
         model='llama3:latest'
     )
@@ -77,7 +81,7 @@ def image_pipeline(query: str, collection_name: str, images_path: list[Path] | N
                 ollama_views.answer(
                     query=ImageAnswer(
                         query="Please provide full describe and information for this image",
-                        paths=[image]
+                        paths=[image],
                     ),
                     model="gemma3:27b"
                 ).answer
@@ -150,26 +154,26 @@ def image_pipeline(query: str, collection_name: str, images_path: list[Path] | N
 if __name__ == "__main__":
 
 
-        #for token in docs_pipeline(
-        #    query="What you know about docker",
-        #    collection_name="devops default",
-        #    docs_path=[Path('./pdf_samples/devops1.pdf')]
-        #):
-        #    print(token, end=" ", flush=True)
-
-
-    for token in image_pipeline(
-        query="In what color monoliza was pained",
-        #query="I provided you picture that represent avenue on paris, how this picture name and who is author",
-        #query="What color pallet use picture that i am you send earlier, that have effel tower on it",
-        collection_name="image_collection",
-        #images_path = [
-        #    Path('./image_samples/monoLiza.jpeg'), 
-        #    Path('./image_samples/picasso.jpg'), 
-        #    Path('./image_samples/sample1.jpg')
-        #]
+    for token in docs_pipeline(
+        query="What you know about Docker",
+        collection_name="devops default",
+        docs_path=[Path('./pdf_samples/devops1.pdf')]
     ):
-        print(token, end='', flush=True)
+        print(token, end=" ", flush=True)
+
+
+    #for token in image_pipeline(
+    #    query="In what color monoliza was pained",
+    #    #query="I provided you picture that represent avenue on paris, how this picture name and who is author",
+    #    #query="What color pallet use picture that i am you send earlier, that have effel tower on it",
+    #    collection_name="image_collection",
+    #    #images_path = [
+    #    #    Path('./image_samples/monoLiza.jpeg'), 
+    #    #    Path('./image_samples/picasso.jpg'), 
+    #    #    Path('./image_samples/sample1.jpg')
+    #    #]
+    #):
+    #    print(token, end='', flush=True)
 
 
 

@@ -6,3 +6,8 @@ numpy
 pillow
 pypdf
 requests
+semchunk
+sentence-transformers
+tiktoken
+transformers
+transformers
