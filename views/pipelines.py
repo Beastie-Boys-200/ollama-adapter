@@ -159,9 +159,15 @@ if __name__ == "__main__":
 
 
     for token in image_pipeline(
-        query="In what color monoloza was pained",
+        query="In what color monoliza was pained",
+        #query="I provided you picture that represent avenue on paris, how this picture name and who is author",
+        #query="What color pallet use picture that i am you send earlier, that have effel tower on it",
         collection_name="image_collection",
-        images_path = [Path('./image_samples/monoLiza.jpeg')]
+        #images_path = [
+        #    Path('./image_samples/monoLiza.jpeg'), 
+        #    Path('./image_samples/picasso.jpg'), 
+        #    Path('./image_samples/sample1.jpg')
+        #]
     ):
         print(token, end='', flush=True)
 
