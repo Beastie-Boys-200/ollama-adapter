@@ -85,6 +85,7 @@ def image_pipeline(query: str, collection_name: str, images_path: list[Path] | N
 
         # make vectors from images descriptions
         img_embedding = ollama_views.get_embendings(images_disc, model='embeddinggemma')
+        print(images_disc)
 
         # update vector db if images provided
         if collection_name not in requests.get(f"{FAISS_URL}/faiss/collections/").json():
@@ -158,8 +159,11 @@ if __name__ == "__main__":
 
 
     for token in image_pipeline(
-        query="What "
-    )
+        query="In what color monoloza was pained",
+        collection_name="image_collection",
+        images_path = [Path('./image_samples/monoLiza.jpeg')]
+    ):
+        print(token, end='', flush=True)
 
 
 
