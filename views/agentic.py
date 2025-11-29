@@ -84,13 +84,15 @@ def main() -> None:
 
         # 1) Якщо перший валідатор завалився – показуємо текст і не йдемо далі
         if not meaningful.state:
-            print(f"[Agent #1 failed]       {"PASS" if correct == -1 else "ERROR"}")
+            print(f'[Agent #1 failed]       {"PASS" if correct == -1 else "ERROR"}')
             print(meaningful.text)
             continue
 
         # 2) Якщо другий валідатор не спрацьовував (None) або завалився
         if routing_validation is None:
-            print(f"[Agent #2 did not run]       {"PASS" if correct == -1 else "ERROR"}")
+            print(
+                f'[Agent #2 did not run]       {"PASS" if correct == -1 else "ERROR"}'
+            )
             # за твоєю логікою тут можна показати текст meaningful/text, але він уже ок
             continue
 
