@@ -10,7 +10,7 @@ class MarkdownPlan(BaseModel):
     plan_markdown: str  # full markdown plan text
 
 
-def llm_planner(query: str, route: int, model: str = "llama3:latest") -> JSONFormat:
+def llm_planner(query: str, route: int, model: str = "llama3:latest"):
     """
     Agent #4: planner.
 
@@ -107,8 +107,27 @@ def llm_planner(query: str, route: int, model: str = "llama3:latest") -> JSONFor
         ]
     )
 
-    format: JSONFormat = JSONFormat(
-        answer=Answer(
+    #format: JSONFormat = JSONFormat(
+    #    answer=Answer(
+    #        query=planner_input,
+    #        other_dict=[
+    #            {
+    #                "role": "system",
+    #                "content": system_prompt,
+    #            }
+    #        ],
+    #    ),
+    #    format=MarkdownPlan,
+    #)
+
+    #return ollama_views.json_output(
+    #    query=format,
+    #    model=model,
+    #    options=OllamaOptions(temperature=0),
+    #)
+
+    return ollama_views.stream_answer(
+        query=Answer(
             query=planner_input,
             other_dict=[
                 {
@@ -117,13 +136,7 @@ def llm_planner(query: str, route: int, model: str = "llama3:latest") -> JSONFor
                 }
             ],
         ),
-        format=MarkdownPlan,
-    )
-
-    return ollama_views.json_output(
-        query=format,
-        model=model,
-        options=OllamaOptions(temperature=0),
+        model=model
     )
 
 

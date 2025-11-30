@@ -2,6 +2,10 @@ from pypdf import PdfReader
 from pathlib import Path
 import semchunk
 from transformers import AutoTokenizer
+import base64
+import io
+
+
 
 # from docling.datamodel.pipeline_options import VlmPipelineOptions
 # from docling.datamodel.base_models import InputFormat
@@ -43,8 +47,13 @@ chunker = semchunk.chunkerify(
 )
 
 
-def read_pdf(pdf_path: Path) -> list[str]:
-    reader = PdfReader(pdf_path)
+def read_pdf(pdf_path: Path | bytes) -> list[str]:
+    if isinstance(pdf_path, Path):
+        reader = PdfReader(pdf_path)
+    else:
+        buffer=base64.b64decode(pdf_path)
+        f=io.BytesIO(buffer)
+        reader = PdfReader(f)
 
     all_text: str = ""
 

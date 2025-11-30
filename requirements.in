@@ -7,7 +7,6 @@ pillow
 pypdf
 requests
 semchunk
-sentence-transformers
 transformers
 scikit-learn
 numpy
