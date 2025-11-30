@@ -1,7 +1,7 @@
 from typing import List
 from controllers.web_parsing.types import Article
 from controllers.web_parsing.scraper import extract_texts_from_links
-from parse import get_search_links
+from .parse import get_search_links
 
 
 def search_and_extract(
@@ -19,7 +19,7 @@ def search_and_extract(
         List[Article]: A list of dictionaries containing "link" and "text" keys.
     """
     links = get_search_links(query, count)
-    result = extract_texts_from_links(links, with_log)
+    result = extract_texts_from_links(links, None, with_log)
     return result
 
 

@@ -5,9 +5,9 @@ EXPOSE 8000
 WORKDIR /llm_providers/
 
 
-ADD controllers/* ./controllers/.
-ADD models/* ./models/.
-ADD views/* ./views/.
+ADD controllers/ ./controllers/.
+ADD models/ ./models/.
+ADD views/ ./views/.
 ADD api.py ./.
 ADD __init__.py ./.
 

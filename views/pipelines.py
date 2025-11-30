@@ -134,7 +134,12 @@ def web_search_pipeline(query: str, count: int, collection_name: str, list_of_qu
 
 
     # --- split web chunks for provide smaller chunks ---
-    texts = [ text.replace("['", "").replace("']") for text in pdf_reader.chunker(texts) ]
+    for i in pdf_reader.chunker(texts):
+        print(type(i))
+        print(i)
+        input()
+    texts = [ text.replace("['", "").replace("']") for text in pdf_reader.chunker(texts) if isinstance(text, str)]
+    print(texts)
 
     # make vectors from text
     embedding = ollama_views.get_embendings(texts, model="embeddinggemma")
@@ -273,7 +278,7 @@ def main_pipeline(query: str, doc: bytes | None = None, img: bytes | None = None
             model = 'llama3:latest'
         ).output.list_of_query
 
-
+        print("\nList of queries", list_of_query)
         
         for token in web_search_pipeline(query, 3, collection_name=conversation_id, list_of_query=list_of_query):
             #print(token, end="", flush=True)
