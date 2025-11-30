@@ -85,7 +85,6 @@ def image_pipeline(
 
         # make vectors from images descriptions
         img_embedding = ollama_views.get_embendings(images_disc, model="embeddinggemma")
-        print(images_disc)
 
         # update vector db if images provided
         if (
@@ -130,13 +129,12 @@ def web_search_pipeline(query: str, count: int, collection_name: str, list_of_qu
 
     texts = []
     for web_query in list_of_query:
-        print("Query ", web_query)
         raw_texts = search_and_extract(web_query, count)
         texts += semantic_clean([ text["text"] for text in raw_texts ], with_log=False)
 
 
     # --- split web chunks for provide smaller chunks ---
-    texts = [ text for text in pdf_reader.chunker(texts) if len(text) > 70 ]
+    texts = [ text.replace("['", "").replace("']") for text in pdf_reader.chunker(texts) ]
 
     # make vectors from text
     embedding = ollama_views.get_embendings(texts, model="embeddinggemma")
@@ -165,6 +163,7 @@ def web_search_pipeline(query: str, count: int, collection_name: str, list_of_qu
         f"{FAISS_URL}/faiss/collections/{collection_name}/similar",
         json=query_emb.tolist(),
     ).json()[-1]
+
 
     # generate answer on it
     return ollama_views.stream_rag_answer(
@@ -196,11 +195,15 @@ def main_pipeline(query: str, doc: bytes | None = None, img: bytes | None = None
     # --- add instead continue LLM response ---
 
     if not meaningful.state:
-        print(meaningful.text)
+        for token in meaningful.text.split(" "):
+            yield token
+        #print(meaningful.text)
         raise ValueError("First agentic validation error")
 
     if not routing_validation.state:
-        print(routing_validation.text)
+        for token in routing_validation.state.split(" "):
+            yield token
+        #print(routing_validation.text)
         raise ValueError("Second agentic validation error")
 
     # -----------------------------------------
@@ -270,10 +273,9 @@ def main_pipeline(query: str, doc: bytes | None = None, img: bytes | None = None
             model = 'llama3:latest'
         ).output.list_of_query
 
-        print("List of queryis", list_of_query)
 
         
-        for token in web_search_pipeline(query, 21, collection_name="web-parsing", list_of_query=list_of_query):
+        for token in web_search_pipeline(query, 3, collection_name=conversation_id, list_of_query=list_of_query):
             #print(token, end="", flush=True)
             yield token
 

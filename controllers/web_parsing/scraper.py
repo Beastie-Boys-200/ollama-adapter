@@ -42,6 +42,7 @@ def get_links_ddg(query: str, count: int) -> List[str]:
     while len(links) < count:
         url = f"https://duckduckgo.com/html/?q={query_enc}&s={offset}"
         res = requests.get(url, headers=headers)
+        print(res)
 
         soup = BeautifulSoup(res.text, "html.parser")
         items = soup.select(".result__a")
