@@ -121,10 +121,61 @@ def image_pipeline(
     )
 
 
-def web_search_pipeline(query: str, count: int):
+def web_search_pipeline(query: str, count: int, collection_name: str):
     raw_texts = search_and_extract(query, count)
     texts = semantic_clean([text["text"] for text in raw_texts], with_log=True)
-    return texts
+
+
+    # --- maybe need to split with chunker web parsed texts ---
+
+    # --- ??? ---
+
+
+    # make vectors from text
+    embedding = ollama_views.get_embendings(texts, model="embeddinggemma")
+
+    # update vector db if docs provided
+    if (
+        collection_name
+        not in requests.get(f"{FAISS_URL}/faiss/collections/").json()
+    ):
+        requests.post(
+            f"{FAISS_URL}/faiss/collection/{collection_name}",
+            json={"vectors": embedding.tolist(), "metadata": {"text": texts}},
+        )
+    else:
+        requests.put(
+            f"{FAISS_URL}/faiss/collection/{collection_name}",
+            json={"vectors": embedding.tolist(), "metadata": {"text": texts}},
+        )
+
+
+    # get embendings from query
+    query_emb = ollama_views.get_embendings([query], model="embeddinggemma")[-1]
+
+    # search top k simple query
+    similar = requests.post(
+        f"{FAISS_URL}/faiss/collections/{collection_name}/similar",
+        json=query_emb.tolist(),
+    ).json()[-1]
+
+    # generate answer on it
+    return ollama_views.stream_rag_answer(
+        query=RagAnswer(
+            query=query,
+            context=[vocab["text"] for vocab in similar],
+            other_dict=[
+                {
+                    "role": "system",
+                    "content": "If provided information does not support with user question, simply answer that you can not answer to this query with provided context. Please provide deep answer with sources from provided contex.",
+                }
+            ],
+        ),
+        model="llama3:latest",
+    )
+
+    
+    
 
 
 if __name__ == "__main__":
@@ -149,4 +200,6 @@ if __name__ == "__main__":
     # ):
     #    print(token, end='', flush=True)
 
-    print(web_search_pipeline("what is japan", 5))
+    for token in web_search_pipeline("Is Nintendo is originally company from Japan", 5, collection_name="web-parsing"):
+        print(token, end="", flush=True)
+
