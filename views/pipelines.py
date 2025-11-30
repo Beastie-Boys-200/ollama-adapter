@@ -126,10 +126,11 @@ def image_pipeline(
 
 def web_search_pipeline(query: str, count: int, collection_name: str, list_of_query: list[str]):
     #raw_texts = search_and_extract(query, count)
-    #texts = semantic_clean([text["text"] for text in raw_texts], with_log=False)
+    #texts = semantic_clean([text["text"] for text in raw_texts], with_log=True)
 
     texts = []
     for web_query in list_of_query:
+        print("Query ", web_query)
         raw_texts = search_and_extract(web_query, count)
         texts += semantic_clean([ text["text"] for text in raw_texts ], with_log=False)
 
@@ -259,7 +260,8 @@ def main_pipeline(query: str, doc: bytes | None = None, img: bytes | None = None
                         'role': 'system',
                         'content': " ".join([
                             "Please generate list of query input that will be use with web search",
-                            "for search relevent information for user query"
+                            "for search relevent information for user query, it will be search in duckduckgo",
+                            "so provide simple and small query"
                         ])
                     }]
                 ), 
@@ -268,8 +270,10 @@ def main_pipeline(query: str, doc: bytes | None = None, img: bytes | None = None
             model = 'llama3:latest'
         ).output.list_of_query
 
+        print("List of queryis", list_of_query)
+
         
-        for token in web_search_pipeline(query, 5, collection_name="web-parsing", list_of_query=list_of_query):
+        for token in web_search_pipeline(query, 21, collection_name="web-parsing", list_of_query=list_of_query):
             #print(token, end="", flush=True)
             yield token
 
