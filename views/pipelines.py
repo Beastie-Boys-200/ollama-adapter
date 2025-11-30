@@ -130,16 +130,23 @@ def web_search_pipeline(query: str, count: int, collection_name: str, list_of_qu
     texts = []
     for web_query in list_of_query:
         raw_texts = search_and_extract(web_query, count)
-        texts += semantic_clean([ text["text"] for text in raw_texts ], with_log=False)
+        raw_text = [ text["text"][idx:idx+512] for text in raw_texts for idx in range(0, len(text['text']), 512)]
+        #texts += semantic_clean([ text["text"] for text in raw_texts ], with_log=False)
+        texts += semantic_clean(raw_text, with_log=False)
 
 
     # --- split web chunks for provide smaller chunks ---
-    for i in pdf_reader.chunker(texts):
-        print(type(i))
-        print(i)
-        input()
-    texts = [ text.replace("['", "").replace("']") for text in pdf_reader.chunker(texts) if isinstance(text, str)]
-    print(texts)
+    #split_texts = 
+    #for chunks in pdf_reader.chunker(texts):
+    #    for chunk in chunks:
+    #        if len(chunk) < 70:
+    #            continue
+    #        te
+
+
+
+    #texts = [ text.replace("['", "").replace("']") for text in pdf_reader.chunker(texts) if isinstance(text, str)]
+    #print(texts)
 
     # make vectors from text
     embedding = ollama_views.get_embendings(texts, model="embeddinggemma")
@@ -186,13 +193,18 @@ def web_search_pipeline(query: str, count: int, collection_name: str, list_of_qu
     )
 
 
+class QueryPipeline(BaseModel):
+    query: str
+    doc: bytes | None = None
+    img: bytes | None = None
+    conversation_id: str = '123123'
 
-
-def main_pipeline(query: str, doc: bytes | None = None, img: bytes | None = None, conversation_id: str = '123123'):
-    doc_flag, img_flag = doc is not None, img is not None
+#def main_pipeline(query: str, doc: bytes | None = None, img: bytes | None = None, conversation_id: str = '123123'):
+def main_pipeline(query: QueryPipeline):
+    doc_flag, img_flag = query.doc is not None, query.img is not None
 
     # --- first and second agent stages --- 
-    result = validate_with_metadata(query, has_image=img_flag, has_doc=doc_flag)
+    result = validate_with_metadata(query.query, has_image=img_flag, has_doc=doc_flag)
 
     meaningful = result["meaningful"]  # Validation
     routing_validation = result["routing"]  # Validation | None
@@ -225,12 +237,12 @@ def main_pipeline(query: str, doc: bytes | None = None, img: bytes | None = None
     elif doc_flag:
         route = 2
     else:
-        route = int(llm_router(query).output.route)
+        route = int(llm_router(query.query).output.route)
 
 
     # --- stream plan ---
 
-    for token in llm_planner(query, route):
+    for token in llm_planner(query.query, route):
         #print(token, end="", flush=True)
         yield token
 
@@ -248,7 +260,7 @@ def main_pipeline(query: str, doc: bytes | None = None, img: bytes | None = None
         # --- shallow model --- 
         for token in ollama_views.stream_answer(
             query = Answer(
-                query=query,
+                query=query.query,
             ), 
             model="llama3:latest"
         ): 
@@ -263,7 +275,7 @@ def main_pipeline(query: str, doc: bytes | None = None, img: bytes | None = None
         list_of_query = ollama_views.json_output(
             query = JSONFormat(
                 answer=Answer(
-                    query=query,
+                    query=query.query,
                     other_dict = [{
                         'role': 'system',
                         'content': " ".join([
@@ -278,18 +290,21 @@ def main_pipeline(query: str, doc: bytes | None = None, img: bytes | None = None
             model = 'llama3:latest'
         ).output.list_of_query
 
-        print("\nList of queries", list_of_query)
+        #print("\nList of queries", list_of_query)
+        yield "\nList of queries" + " ".join(list_of_query)
+
+        list_of_query = list_of_query[:3]
         
-        for token in web_search_pipeline(query, 3, collection_name=conversation_id, list_of_query=list_of_query):
+        for token in web_search_pipeline(query.query, 3, collection_name=query.conversation_id, list_of_query=list_of_query):
             #print(token, end="", flush=True)
             yield token
 
     elif route == 2:
         # --- documenet pipeline ---
         for token in docs_pipeline(
-            query=query,
-            collection_name=conversation_id,
-            docs_path=[doc] if doc is not None else None,
+            query=query.query,
+            collection_name=query.conversation_id,
+            docs_path=[query.doc] if query.doc is not None else None,
         ):
             #print(token, end=" ", flush=True)
             yield token
@@ -297,9 +312,9 @@ def main_pipeline(query: str, doc: bytes | None = None, img: bytes | None = None
     elif route == 3:
         # --- image pipeline ---
         for token in image_pipeline(
-           query=query,
-           collection_name=conversation_id,
-           images_path = [img] if img is not None else None
+           query=query.query,
+           collection_name=query.conversation_id,
+           images_path = [query.img] if query.img is not None else None
         ):
            #print(token, end='', flush=True)
             yield token
@@ -340,7 +355,10 @@ if __name__ == "__main__":
     #    print(token, end="", flush=True)
 
 
-    for token in main_pipeline("Please provide me fresh list with game station that Nintendo currently sell in Europe."):
+    #for token in main_pipeline(QueryPipeline(query="What game console currently Nintendo sell in Europe? Could you please search freash information on web for provide this answer")):
+        #print(token, end="", flush=True)
+
+    for token in main_pipeline(QueryPipeline(query="What services provide Deutche Telekom in Slovakia, please provide me answer with deep research")):
         print(token, end="", flush=True)
     #main_pipeline("Hello")
     

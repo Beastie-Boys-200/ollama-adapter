@@ -6,6 +6,7 @@ from .views import ollama as ollama_provider
 from .models.Answer import *
 from .models.ollama import OllamaOptions
 from .views import pipelines as pipeline_provider
+from .views.pipelines import QueryPipeline
 
 app = FastAPI(
     title="LLM Providers",
@@ -163,12 +164,9 @@ def stream_image_answer_by_imageanswer_with_url(query: ImageAnswer, model: str |
 
 
 @app.post('/pipeline/main/thread', tags=['agentic-pipeline'])
-def main_pipeline(query: str, conversation_id: str, img_b: bytes | None = None, doc_b: bytes | None = None, model: str | None = None):
+def main_pipeline(query: QueryPipeline, model: str | None = None):
     return StreamingResponse(pipeline_provider.main_pipeline(
-        query = query,
-        img=img_b, doc=doc_b,
-        conversation_id=conversation_id,
-        #model=model or DEFAULT_OLLAMA_IMG_MODEL
+        query=query
     ), media_type='text')
 
 
