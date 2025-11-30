@@ -7,6 +7,7 @@ from .clean import semantic_clean
 from .llm_planer import validate_with_metadata
 from .llm_router import llm_router
 from .planer import llm_planner
+import json
 
 FAISS_URL = "http://localhost:8004"
 
@@ -213,13 +214,14 @@ def main_pipeline(query: QueryPipeline):
 
     if not meaningful.state:
         for token in meaningful.text.split(" "):
-            yield token
+            yield json.dumps({ 'role': 'bot', 'token': token })
         #print(meaningful.text)
         raise ValueError("First agentic validation error")
 
     if not routing_validation.state:
         for token in routing_validation.state.split(" "):
-            yield token
+            yield json.dumps({ 'role': 'bot', 'token': token })
+            #yield token
         #print(routing_validation.text)
         raise ValueError("Second agentic validation error")
 
@@ -244,7 +246,8 @@ def main_pipeline(query: QueryPipeline):
 
     for token in llm_planner(query.query, route):
         #print(token, end="", flush=True)
-        yield token
+        yield json.dumps({ 'role': 'plan', 'token': token })
+        #yield token
 
     # --- end of stream plan ---
 
@@ -265,7 +268,8 @@ def main_pipeline(query: QueryPipeline):
             model="llama3:latest"
         ): 
             #print(token, end="", flush=True)
-            yield token
+            yield json.dumps({ 'role': 'bot', 'token': token })
+            #yield token
 
     elif route == 1:
         # --- web search ---
@@ -291,13 +295,17 @@ def main_pipeline(query: QueryPipeline):
         ).output.list_of_query
 
         #print("\nList of queries", list_of_query)
-        yield "\nList of queries" + " ".join(list_of_query)
+        yield json.dumps({ 'role': 'web link', 'token': "\n".join([
+            f"{idx}. **{query}**" for idx, query in enumerate(list_of_query)
+        ])})
+        #yield "\nList of queries" + " ".join(list_of_query)
 
         list_of_query = list_of_query[:3]
         
         for token in web_search_pipeline(query.query, 3, collection_name=query.conversation_id, list_of_query=list_of_query):
             #print(token, end="", flush=True)
-            yield token
+            yield json.dumps({ 'role': 'bot', 'token': token })
+            #yield token
 
     elif route == 2:
         # --- documenet pipeline ---
@@ -307,7 +315,8 @@ def main_pipeline(query: QueryPipeline):
             docs_path=[query.doc] if query.doc is not None else None,
         ):
             #print(token, end=" ", flush=True)
-            yield token
+            yield json.dumps({ 'role': 'bot', 'token': token })
+            #yield token
 
     elif route == 3:
         # --- image pipeline ---
@@ -317,7 +326,8 @@ def main_pipeline(query: QueryPipeline):
            images_path = [query.img] if query.img is not None else None
         ):
            #print(token, end='', flush=True)
-            yield token
+            yield json.dumps({ 'role': 'bot', 'token': token })
+            #yield token
 
     else:
         raise ValueError("Route is not match with our pipeline")

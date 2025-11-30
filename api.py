@@ -167,7 +167,8 @@ def stream_image_answer_by_imageanswer_with_url(query: ImageAnswer, model: str |
 def main_pipeline(query: QueryPipeline, model: str | None = None):
     return StreamingResponse(pipeline_provider.main_pipeline(
         query=query
-    ), media_type='text')
+    ), media_type='application/x-ndjson')
+    #), media_type='text')
 
 
 
