@@ -5,120 +5,120 @@ import requests
 from .scraper import search_and_extract
 from .clean import semantic_clean
 
-# FAISS_URL = "http://localhost:8004"
+FAISS_URL = "http://localhost:8004"
 
 
-# def docs_pipeline(
-#     query: str, collection_name: str, docs_path: list[Path] | None = None
-# ):
+def docs_pipeline(
+    query: str, collection_name: str, docs_path: list[Path] | None = None
+):
 
-#     # read docs if provided
-#     if docs_path is not None:
-#         chunks: list[str] = []
+    # read docs if provided
+    if docs_path is not None:
+        chunks: list[str] = []
 
-#         for doc in docs_path:
-#             chunks += pdf_reader.read_pdf(doc)
+        for doc in docs_path:
+            chunks += pdf_reader.read_pdf(doc)
 
-#         # make vectors from text
-#         embedding = ollama_views.get_embendings(chunks, model="embeddinggemma")
+        # make vectors from text
+        embedding = ollama_views.get_embendings(chunks, model="embeddinggemma")
 
-#         # update vector db if docs provided
-#         if (
-#             collection_name
-#             not in requests.get(f"{FAISS_URL}/faiss/collections/").json()
-#         ):
-#             requests.post(
-#                 f"{FAISS_URL}/faiss/collection/{collection_name}",
-#                 json={"vectors": embedding.tolist(), "metadata": {"text": chunks}},
-#             )
-#         else:
-#             requests.put(
-#                 f"{FAISS_URL}/faiss/collection/{collection_name}",
-#                 json={"vectors": embedding.tolist(), "metadata": {"text": chunks}},
-#             )
+        # update vector db if docs provided
+        if (
+            collection_name
+            not in requests.get(f"{FAISS_URL}/faiss/collections/").json()
+        ):
+            requests.post(
+                f"{FAISS_URL}/faiss/collection/{collection_name}",
+                json={"vectors": embedding.tolist(), "metadata": {"text": chunks}},
+            )
+        else:
+            requests.put(
+                f"{FAISS_URL}/faiss/collection/{collection_name}",
+                json={"vectors": embedding.tolist(), "metadata": {"text": chunks}},
+            )
 
-#     # get embendings from query
-#     query_emb = ollama_views.get_embendings([query], model="embeddinggemma")[-1]
+    # get embendings from query
+    query_emb = ollama_views.get_embendings([query], model="embeddinggemma")[-1]
 
-#     # search top k simple query
-#     similar = requests.post(
-#         f"{FAISS_URL}/faiss/collections/{collection_name}/similar",
-#         json=query_emb.tolist(),
-#     ).json()[-1]
+    # search top k simple query
+    similar = requests.post(
+        f"{FAISS_URL}/faiss/collections/{collection_name}/similar",
+        json=query_emb.tolist(),
+    ).json()[-1]
 
-#     # generate answer on it
-#     return ollama_views.stream_rag_answer(
-#         query=RagAnswer(
-#             query=query,
-#             context=[vocab["text"] for vocab in similar],
-#             other_dict=[
-#                 {
-#                     "role": "system",
-#                     "content": "If provided information does not support with user question, simply answer that you can not answer to this query with provided context",
-#                 }
-#             ],
-#         ),
-#         model="llama3:latest",
-#     )
+    # generate answer on it
+    return ollama_views.stream_rag_answer(
+        query=RagAnswer(
+            query=query,
+            context=[vocab["text"] for vocab in similar],
+            other_dict=[
+                {
+                    "role": "system",
+                    "content": "If provided information does not support with user question, simply answer that you can not answer to this query with provided context",
+                }
+            ],
+        ),
+        model="llama3:latest",
+    )
 
 
-# def image_pipeline(
-#     query: str, collection_name: str, images_path: list[Path] | None = None
-# ):
+def image_pipeline(
+    query: str, collection_name: str, images_path: list[Path] | None = None
+):
 
-#     # describe images if they provided
-#     if images_path is not None:
-#         images_disc = []
-#         for image in images_path:
-#             images_disc.append(
-#                 ollama_views.answer(
-#                     query=ImageAnswer(
-#                         query="Please provide full describe and information for this image",
-#                         paths=[image],
-#                     ),
-#                     model="gemma3:27b",
-#                 ).answer
-#             )
+    # describe images if they provided
+    if images_path is not None:
+        images_disc = []
+        for image in images_path:
+            images_disc.append(
+                ollama_views.answer(
+                    query=ImageAnswer(
+                        query="Please provide full describe and information for this image",
+                        paths=[image],
+                    ),
+                    model="gemma3:27b",
+                ).answer
+            )
 
-#         # make vectors from images descriptions
-#         img_embedding = ollama_views.get_embendings(images_disc, model="embeddinggemma")
-#         print(images_disc)
+        # make vectors from images descriptions
+        img_embedding = ollama_views.get_embendings(images_disc, model="embeddinggemma")
+        print(images_disc)
 
-#         # update vector db if images provided
-#         if (
-#             collection_name
-#             not in requests.get(f"{FAISS_URL}/faiss/collections/").json()
-#         ):
-#             requests.post(
-#                 f"{FAISS_URL}/faiss/collection/{collection_name}",
-#                 json={
-#                     "vectors": img_embedding.tolist(),
-#                     "metadata": {"text": images_disc},
-#                 },
-#             )
-#         else:
-#             requests.put(
-#                 f"{FAISS_URL}/faiss/collection/{collection_name}",
-#                 json={
-#                     "vectors": img_embedding.tolist(),
-#                     "metadata": {"text": images_disc},
-#                 },
-#             )
+        # update vector db if images provided
+        if (
+            collection_name
+            not in requests.get(f"{FAISS_URL}/faiss/collections/").json()
+        ):
+            requests.post(
+                f"{FAISS_URL}/faiss/collection/{collection_name}",
+                json={
+                    "vectors": img_embedding.tolist(),
+                    "metadata": {"text": images_disc},
+                },
+            )
+        else:
+            requests.put(
+                f"{FAISS_URL}/faiss/collection/{collection_name}",
+                json={
+                    "vectors": img_embedding.tolist(),
+                    "metadata": {"text": images_disc},
+                },
+            )
 
-#     # get embendings from query
-#     query_emb = ollama_views.get_embendings([query], model="embeddinggemma")[-1]
+    # get embendings from query
+    query_emb = ollama_views.get_embendings([query], model="embeddinggemma")[-1]
 
-#     # search for most similar text chunks
-#     similar = requests.post(
-#         f"{FAISS_URL}/faiss/collections/{collection_name}/similar",
-#         json=query_emb.tolist(),
-#     ).json()[-1]
+    # search for most similar text chunks
+    similar = requests.post(
+        f"{FAISS_URL}/faiss/collections/{collection_name}/similar",
+        json=query_emb.tolist(),
+    ).json()[-1]
 
-#     # stream final answer with similar context
-#     return ollama_views.stream_rag_answer(
-#         query=RagAnswer(query=query, context=[vocab["text"] for vocab in similar]),
-#         model="llama3:latest",
-#     )
+    # stream final answer with similar context
+    return ollama_views.stream_rag_answer(
+        query=RagAnswer(query=query, context=[vocab["text"] for vocab in similar]),
+        model="llama3:latest",
+    )
 
 
 def web_search_pipeline(query: str, count: int):

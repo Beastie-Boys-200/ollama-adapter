@@ -9,3 +9,8 @@ requests
 semchunk
 sentence-transformers
 transformers
+scikit-learn
+numpy
+nltk
+trafilatura
+beautifulsoup4

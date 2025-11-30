@@ -1,10 +1,10 @@
 from typing import List, Tuple
 from nltk.tokenize import sent_tokenize
 
-# import nltk
+import nltk
 
-# nltk.download("punkt")
-# nltk.download("punkt_tab")
+nltk.download("punkt")
+nltk.download("punkt_tab")
 
 
 def split_into_sentences(
