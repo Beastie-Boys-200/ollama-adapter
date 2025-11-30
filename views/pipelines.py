@@ -24,7 +24,7 @@ def docs_pipeline(
             chunks += pdf_reader.read_pdf(doc)
 
         # make vectors from text
-        embedding = ollama_views.get_embendings(chunks, model="embeddinggemma")
+        embedding = ollama_views.get_embendings(chunks, model="all-minil")
 
         # update vector db if docs provided
         if (
@@ -42,7 +42,7 @@ def docs_pipeline(
             )
 
     # get embendings from query
-    query_emb = ollama_views.get_embendings([query], model="embeddinggemma")[-1]
+    query_emb = ollama_views.get_embendings([query], model="all-minil")[-1]
 
     # search top k simple query
     similar = requests.post(
@@ -85,7 +85,7 @@ def image_pipeline(
             )
 
         # make vectors from images descriptions
-        img_embedding = ollama_views.get_embendings(images_disc, model="embeddinggemma")
+        img_embedding = ollama_views.get_embendings(images_disc, model="all-minil")
 
         # update vector db if images provided
         if (
@@ -109,7 +109,7 @@ def image_pipeline(
             )
 
     # get embendings from query
-    query_emb = ollama_views.get_embendings([query], model="embeddinggemma")[-1]
+    query_emb = ollama_views.get_embendings([query], model="all-minil")[-1]
 
     # search for most similar text chunks
     similar = requests.post(
@@ -124,39 +124,55 @@ def image_pipeline(
     )
 
 
-def web_search_pipeline(query: str, count: int, collection_name: str, list_of_query: list[str]):
-    #raw_texts = search_and_extract(query, count)
-    #texts = semantic_clean([text["text"] for text in raw_texts], with_log=True)
+
+def web_search_pipeline(
+    query: str, count: int, collection_name: str, list_of_query: list[str]
+):
+    # raw_texts = search_and_extract(query, count)
+    # texts = semantic_clean([text["text"] for text in raw_texts], with_log=True)
 
     texts = []
     for web_query in list_of_query:
         raw_texts = search_and_extract(web_query, count)
-        raw_text = [ text["text"][idx:idx+512] for text in raw_texts for idx in range(0, len(text['text']), 512)]
-        #texts += semantic_clean([ text["text"] for text in raw_texts ], with_log=False)
+
+        raw_text = [
+            text["text"][idx : idx + 512]
+            for text in raw_texts
+            for idx in range(0, len(text["text"]), 512)
+            if text["text"]
+        ]
+
+        # texts += semantic_clean([ text["text"] for text in raw_texts ], with_log=False)
         texts += semantic_clean(raw_text, with_log=False)
 
-
     # --- split web chunks for provide smaller chunks ---
-    #split_texts = 
-    #for chunks in pdf_reader.chunker(texts):
-    #    for chunk in chunks:
-    #        if len(chunk) < 70:
-    #            continue
-    #        te
+    split_texts = []
 
+    # 1) texts → список рядків
+    for text in texts:
+        # chunker повертає списки чанків
+        chunks = pdf_reader.chunker(text)
 
+        for chunk in chunks:
+            # chunk може бути списком або рядком → приводимо до str
+            if not isinstance(chunk, str):
+                chunk = " ".join(chunk)
 
-    #texts = [ text.replace("['", "").replace("']") for text in pdf_reader.chunker(texts) if isinstance(text, str)]
-    #print(texts)
+            # пропустити дрібні шматки
+            if len(chunk.strip()) < 70:
+                continue
+
+            split_texts.append(chunk.strip())
+
+    texts = split_texts
+
+    # print(texts)
 
     # make vectors from text
-    embedding = ollama_views.get_embendings(texts, model="embeddinggemma")
+    embedding = ollama_views.get_embendings(texts, model="all-minilm")
 
     # update vector db if docs provided
-    if (
-        collection_name
-        not in requests.get(f"{FAISS_URL}/faiss/collections/").json()
-    ):
+    if collection_name not in requests.get(f"{FAISS_URL}/faiss/collections/").json():
         requests.post(
             f"{FAISS_URL}/faiss/collection/{collection_name}",
             json={"vectors": embedding.tolist(), "metadata": {"text": texts}},
@@ -167,16 +183,15 @@ def web_search_pipeline(query: str, count: int, collection_name: str, list_of_qu
             json={"vectors": embedding.tolist(), "metadata": {"text": texts}},
         )
 
-
     # get embendings from query
-    query_emb = ollama_views.get_embendings([query], model="embeddinggemma")[-1]
+    query_emb = ollama_views.get_embendings([query], model="all-minilm")[-1]
 
     # search top k simple query
+    print()
     similar = requests.post(
         f"{FAISS_URL}/faiss/collections/{collection_name}/similar",
         json=query_emb.tolist(),
     ).json()[-1]
-
 
     # generate answer on it
     return ollama_views.stream_rag_answer(
@@ -192,6 +207,8 @@ def web_search_pipeline(query: str, count: int, collection_name: str, list_of_qu
         ),
         model="llama3:latest",
     )
+
+
 
 
 class QueryPipeline(BaseModel):
@@ -214,13 +231,15 @@ def main_pipeline(query: QueryPipeline):
 
     if not meaningful.state:
         for token in meaningful.text.split(" "):
-            yield json.dumps({ 'role': 'bot', 'token': token })
+            yield json.dumps({ 'role': 'bot', 'token': token }) + "\n"
+
         #print(meaningful.text)
         raise ValueError("First agentic validation error")
 
     if not routing_validation.state:
         for token in routing_validation.state.split(" "):
-            yield json.dumps({ 'role': 'bot', 'token': token })
+            yield json.dumps({ 'role': 'bot', 'token': token }) + "\n"
+
             #yield token
         #print(routing_validation.text)
         raise ValueError("Second agentic validation error")
@@ -246,7 +265,8 @@ def main_pipeline(query: QueryPipeline):
 
     for token in llm_planner(query.query, route):
         #print(token, end="", flush=True)
-        yield json.dumps({ 'role': 'plan', 'token': token })
+        yield json.dumps({ 'role': 'plan', 'token': token }) + "\n"
+
         #yield token
 
     # --- end of stream plan ---
@@ -268,7 +288,7 @@ def main_pipeline(query: QueryPipeline):
             model="llama3:latest"
         ): 
             #print(token, end="", flush=True)
-            yield json.dumps({ 'role': 'bot', 'token': token })
+            yield json.dumps({ 'role': 'bot', 'token': token }) + "\n"
             #yield token
 
     elif route == 1:
@@ -296,15 +316,17 @@ def main_pipeline(query: QueryPipeline):
 
         #print("\nList of queries", list_of_query)
         yield json.dumps({ 'role': 'web link', 'token': "\n".join([
-            f"{idx}. **{query}**" for idx, query in enumerate(list_of_query)
-        ])})
+            f" {idx}. **{query}**" for idx, query in enumerate(list_of_query)
+        ])}) + "\n"
+
         #yield "\nList of queries" + " ".join(list_of_query)
 
         list_of_query = list_of_query[:3]
         
         for token in web_search_pipeline(query.query, 3, collection_name=query.conversation_id, list_of_query=list_of_query):
             #print(token, end="", flush=True)
-            yield json.dumps({ 'role': 'bot', 'token': token })
+            yield json.dumps({ 'role': 'bot', 'token': token }) + "\n"
+
             #yield token
 
     elif route == 2:
@@ -315,7 +337,8 @@ def main_pipeline(query: QueryPipeline):
             docs_path=[query.doc] if query.doc is not None else None,
         ):
             #print(token, end=" ", flush=True)
-            yield json.dumps({ 'role': 'bot', 'token': token })
+            yield json.dumps({ 'role': 'bot', 'token': token }) + "\n"
+
             #yield token
 
     elif route == 3:
@@ -326,7 +349,8 @@ def main_pipeline(query: QueryPipeline):
            images_path = [query.img] if query.img is not None else None
         ):
            #print(token, end='', flush=True)
-            yield json.dumps({ 'role': 'bot', 'token': token })
+            yield json.dumps({ 'role': 'bot', 'token': token }) + "\n"
+
             #yield token
 
     else:

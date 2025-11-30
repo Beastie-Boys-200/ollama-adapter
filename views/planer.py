@@ -89,11 +89,11 @@ def llm_planner(query: str, route: int, model: str = "llama3:latest"):
             "- The Markdown text MUST be in English.",
             "",
             "OUTPUT FORMAT (STRICT):",
-            "- You MUST return ONLY raw JSON matching this structure:",
-            '  {"route": int, "plan_markdown": str}',
-            "- route MUST be exactly the same integer you received in [ROUTE].",
-            "- plan_markdown MUST contain the FULL Markdown document (no truncation).",
-            "- Do NOT output plain Markdown alone; always wrap it in JSON.",
+            "You must return only the complete Markdown document, with no truncation.",
+            "The route number you receive in [ROUTE] must appear unchanged at the top of your response, followed by the Markdown output.",
+            "Do not wrap anything in JSON.",
+            "Do not include any additional commentary, explanations, or formatting outside the Markdown document itself.",
+            "",
         ]
     )
 

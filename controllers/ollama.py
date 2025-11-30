@@ -69,12 +69,30 @@ def json_answer(messages: list[dict[str, str]], model: str, format: type[BaseMod
     return format.model_validate_json(response.message.content)
 
 
-
-
-
 def get_embedding(text: str, model: str) -> np.ndarray:
     result = ollama.embed(model, text)
-    return np.array(result['embeddings'][0])
+
+    # 1) Моделі типу all-minilm, nomic, mxbai -> embeddings=[[vector]]
+    if "embeddings" in result:
+        emb = result["embeddings"]
+
+        if isinstance(emb, list) and len(emb) > 0:
+            vec = emb[0]
+
+            # Перевірка, що це саме 1D-вектор
+            if isinstance(vec, list) and all(isinstance(x, (int, float)) for x in vec):
+                return np.array(vec, dtype=float)
+
+    # 2) Моделі, які повертають "embedding": [...]
+    if "embedding" in result:
+        vec = result["embedding"]
+        if isinstance(vec, list):
+            return np.array(vec, dtype=float)
+
+    # Якщо щось пішло не так — повертаємо None або кидаємо помилку
+    raise ValueError(
+        f"Model '{model}' did not return valid embeddings. Raw response: {result}"
+    )
 
 
 
