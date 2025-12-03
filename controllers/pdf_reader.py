@@ -51,9 +51,20 @@ def read_pdf(pdf_path: Path | bytes) -> list[str]:
     if isinstance(pdf_path, Path):
         reader = PdfReader(pdf_path)
     else:
-        buffer=base64.b64decode(pdf_path)
-        f=io.BytesIO(buffer)
+        if isinstance(pdf_path, bytes):
+            pdf_path = pdf_path.decode("utf-8")  # или нужная тебе кодировка
+
+            # если это data URL: "data:application/pdf;base64,...."
+        if pdf_path.startswith("data:"):
+            pdf_b64 = pdf_path.split(",", 1)[1]
+        else:
+            pdf_b64 = pdf_path  # уже чистый base64
+
+        buffer = base64.b64decode(pdf_b64)
+        f = io.BytesIO(buffer)
         reader = PdfReader(f)
+
+
 
     all_text: str = ""
 

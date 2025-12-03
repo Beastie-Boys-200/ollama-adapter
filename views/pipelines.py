@@ -8,8 +8,11 @@ from .llm_planer import validate_with_metadata
 from .llm_router import llm_router
 from .planer import llm_planner
 import json
+import io
+import base64
 
-FAISS_URL = "http://localhost:8004"
+#FAISS_URL = "http://host.docker.internal:8004"
+FAISS_URL = 'http://localhost:8004'
 
 
 def docs_pipeline(
@@ -24,12 +27,12 @@ def docs_pipeline(
             chunks += pdf_reader.read_pdf(doc)
 
         # make vectors from text
-        embedding = ollama_views.get_embendings(chunks, model="all-minil")
+        embedding = ollama_views.get_embendings(chunks, model="all-minilm")
 
         # update vector db if docs provided
         if (
             collection_name
-            not in requests.get(f"{FAISS_URL}/faiss/collections/").json()
+            not in requests.get(f"{FAISS_URL}/faiss/collections").json()
         ):
             requests.post(
                 f"{FAISS_URL}/faiss/collection/{collection_name}",
@@ -42,7 +45,7 @@ def docs_pipeline(
             )
 
     # get embendings from query
-    query_emb = ollama_views.get_embendings([query], model="all-minil")[-1]
+    query_emb = ollama_views.get_embendings([query], model="all-minilm")[-1]
 
     # search top k simple query
     similar = requests.post(
@@ -70,8 +73,32 @@ def image_pipeline(
     query: str, collection_name: str, images_path: list[Path] | list[bytes] | None = None
 ):
 
+
     # describe images if they provided
     if images_path is not None:
+
+        img_path = []
+        for kika in images_path:
+            # kika может быть bytes (data URL или base64) или str
+            if isinstance(kika, bytes):
+                data_url = kika.decode("utf-8")
+            else:
+                data_url = kika
+
+            # если приходит вида "data:image/png;base64,AAAA..."
+            if data_url.startswith("data:"):
+                img_b64 = data_url.split(",", 1)[1]
+            else:
+                img_b64 = data_url  # уже чистый base64
+
+            buffer = base64.b64decode(img_b64)  # это bytes с картинкой
+            img_path.append(buffer)             # кладём СЫРЫЕ байты, не BytesIO
+
+
+
+        
+        images_path = img_path
+
         images_disc = []
         for image in images_path:
             images_disc.append(
@@ -85,12 +112,12 @@ def image_pipeline(
             )
 
         # make vectors from images descriptions
-        img_embedding = ollama_views.get_embendings(images_disc, model="all-minil")
+        img_embedding = ollama_views.get_embendings(images_disc, model="all-minilm")
 
         # update vector db if images provided
         if (
             collection_name
-            not in requests.get(f"{FAISS_URL}/faiss/collections/").json()
+            not in requests.get(f"{FAISS_URL}/faiss/collections").json()
         ):
             requests.post(
                 f"{FAISS_URL}/faiss/collection/{collection_name}",
@@ -109,7 +136,7 @@ def image_pipeline(
             )
 
     # get embendings from query
-    query_emb = ollama_views.get_embendings([query], model="all-minil")[-1]
+    query_emb = ollama_views.get_embendings([query], model="all-minilm")[-1]
 
     # search for most similar text chunks
     similar = requests.post(
@@ -132,7 +159,7 @@ def web_search_pipeline(
     # texts = semantic_clean([text["text"] for text in raw_texts], with_log=True)
 
     texts = []
-    for web_query in list_of_query:
+    for web_query in list_of_query[:3]:
         raw_texts = search_and_extract(web_query, count)
 
         raw_text = [
@@ -172,7 +199,7 @@ def web_search_pipeline(
     embedding = ollama_views.get_embendings(texts, model="all-minilm")
 
     # update vector db if docs provided
-    if collection_name not in requests.get(f"{FAISS_URL}/faiss/collections/").json():
+    if collection_name not in requests.get(f"{FAISS_URL}/faiss/collections").json():
         requests.post(
             f"{FAISS_URL}/faiss/collection/{collection_name}",
             json={"vectors": embedding.tolist(), "metadata": {"text": texts}},
@@ -231,18 +258,22 @@ def main_pipeline(query: QueryPipeline):
 
     if not meaningful.state:
         for token in meaningful.text.split(" "):
-            yield json.dumps({ 'role': 'bot', 'token': token }) + "\n"
+            yield json.dumps({ 'role': 'bot', 'token': token + " "}) + "\n"
+        
+        return json.dumps({ 'role': 'bot', 'token': " "}) + "\n"
 
         #print(meaningful.text)
-        raise ValueError("First agentic validation error")
+        #raise ValueError("First agentic validation error")
 
     if not routing_validation.state:
-        for token in routing_validation.state.split(" "):
-            yield json.dumps({ 'role': 'bot', 'token': token }) + "\n"
+        for token in routing_validation.text.split(" "):
+            yield json.dumps({ 'role': 'bot', 'token': token + " "}) + "\n"
+
+        return json.dumps({ 'role': 'bot', 'token': " "}) + "\n"
 
             #yield token
         #print(routing_validation.text)
-        raise ValueError("Second agentic validation error")
+        #raise ValueError("Second agentic validation error")
 
     # -----------------------------------------
 
